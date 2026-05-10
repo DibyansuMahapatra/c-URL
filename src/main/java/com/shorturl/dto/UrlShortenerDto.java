@@ -10,6 +10,7 @@ import lombok.Setter;
 public class UrlShortenerDto {
 	
 	private String originalUrl;
+	private String shortUrl;
 	private Integer page;
 	private Integer size;
 }
