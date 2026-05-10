@@ -1,5 +1,6 @@
 package com.shorturl.controller;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,8 @@ import com.shorturl.model.GenericResponseModelList;
 import com.shorturl.model.UrlShortenerModel;
 import com.shorturl.service.UrlShortenerService;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 @RestController
 @RequestMapping("/compactURL")
 public class UrlShortenerController {
@@ -28,8 +31,14 @@ public class UrlShortenerController {
 	}
 
 	@GetMapping("/fetchAll")
-	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(@RequestBody UrlShortenerDto paginationRequest ) {
+	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(
+			@RequestBody UrlShortenerDto paginationRequest) {
 		return service.fetchAllShortUrls(paginationRequest);
+	}
+
+	@GetMapping("/redirect")
+	public void redirectUrl(@RequestBody UrlShortenerDto requestUrl, HttpServletResponse response) throws IOException {
+		service.redirectUrl(requestUrl, response);
 	}
 
 //	@DeleteMapping("/delete")

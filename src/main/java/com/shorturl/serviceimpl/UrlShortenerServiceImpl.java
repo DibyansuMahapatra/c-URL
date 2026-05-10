@@ -1,5 +1,6 @@
 package com.shorturl.serviceimpl;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,8 @@ import com.shorturl.repository.UrlShortenerRepo;
 import com.shorturl.service.UrlShortenerService;
 import com.shorturl.util.UrlShortenerUtil;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 @Service
 public class UrlShortenerServiceImpl implements UrlShortenerService {
 
@@ -31,16 +34,18 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 	public GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto) {
 
 		try {
-			
+
 			// Check if already exists
-			if(repo.existsByOriginalUrl(requestDto.getOriginalUrl())) {
-				return new GenericResponseModel<>(HttpStatus.CONFLICT.value(), HttpStatus.CONFLICT, null, "Given URL's Short URL already exists", null);
+			if (repo.existsByOriginalUrl(requestDto.getOriginalUrl())) {
+				return new GenericResponseModel<>(HttpStatus.CONFLICT.value(), HttpStatus.CONFLICT, null,
+						"Given URL's Short URL already exists", null);
 			}
-			
+
 			// Generate a unique short URL code
+			String baseUrl = "http://localhost:8080/";
 			String shortCode = util.generateShortCode();
-			String shortUrl = "http://localhost:8080/" + shortCode;
-			
+			String shortUrl = baseUrl + shortCode;
+
 			// Map from Dto to Entity Object Safely
 			UrlShortenerEntity entity = util.mapToEntity(requestDto, shortUrl);
 
@@ -61,15 +66,15 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
 	@Override
 	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(UrlShortenerDto paginationRequest) {
-		
+
 		Integer page = paginationRequest.getPage();
 		Integer size = paginationRequest.getSize();
-		if(page == null || size == null) {
+		if (page == null || size == null) {
 			page = 1;
 			size = 10;
 		}
 
-		Pageable pageable = PageRequest.of(page-1, size);
+		Pageable pageable = PageRequest.of(page - 1, size);
 
 		Page<UrlShortenerEntity> entityPage = repo.findAll(pageable);
 
@@ -83,9 +88,25 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 		response.setMessage("Links Fetched Successfully");
 		// Page Meta Data
 		response.setTotalElements(entityPage.getTotalElements());
-		response.setPage((long) entityPage.getNumber()+1);
+		response.setPage((long) entityPage.getNumber() + 1);
 		response.setSize((long) entityPage.getSize());
 
 		return response;
+	}
+
+	@Override
+	public void redirectUrl(UrlShortenerDto requestUrl, HttpServletResponse response) throws IOException {
+
+		UrlShortenerEntity entity = repo.findByShortUrl(requestUrl.getShortUrl());
+
+		if (entity == null) {
+			response.sendError(HttpServletResponse.SC_NOT_FOUND);
+			return;
+		}
+
+		entity.setClickCount(entity.getClickCount() + 1);
+		repo.save(entity);
+
+		response.sendRedirect(entity.getOriginalUrl());
 	}
 }
