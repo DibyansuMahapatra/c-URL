@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.shorturl.dto.UrlShortenerDto;
 import com.shorturl.model.GenericResponseModel;
+import com.shorturl.model.GenericResponseModelList;
 import com.shorturl.model.UrlShortenerModel;
 
 public interface UrlShortenerService {
@@ -16,5 +17,5 @@ public interface UrlShortenerService {
      */
     GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto);
     
-    GenericResponseModel<List<UrlShortenerModel>> fetchAllShortUrls();
+    GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(UrlShortenerDto paginationRequest);
 }

@@ -8,6 +8,8 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class UrlShortenerDto {
-
+	
 	private String originalUrl;
+	private Integer page;
+	private Integer size;
 }
