@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.shorturl.dto.UrlShortenerDto;
 import com.shorturl.model.GenericResponseModel;
+import com.shorturl.model.GenericResponseModelList;
 import com.shorturl.model.UrlShortenerModel;
 import com.shorturl.service.UrlShortenerService;
 
@@ -27,8 +28,8 @@ public class UrlShortenerController {
 	}
 
 	@GetMapping("/fetchAll")
-	public GenericResponseModel<List<UrlShortenerModel>> fetchAllShortUrls() {
-		return service.fetchAllShortUrls();
+	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(@RequestBody UrlShortenerDto paginationRequest ) {
+		return service.fetchAllShortUrls(paginationRequest);
 	}
 
 //	@DeleteMapping("/delete")

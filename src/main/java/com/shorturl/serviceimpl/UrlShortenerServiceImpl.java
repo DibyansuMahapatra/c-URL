@@ -3,12 +3,16 @@ package com.shorturl.serviceimpl;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.shorturl.dto.UrlShortenerDto;
 import com.shorturl.entity.UrlShortenerEntity;
 import com.shorturl.model.GenericResponseModel;
+import com.shorturl.model.GenericResponseModelList;
 import com.shorturl.model.UrlShortenerModel;
 import com.shorturl.repository.UrlShortenerRepo;
 import com.shorturl.service.UrlShortenerService;
@@ -27,10 +31,16 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 	public GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto) {
 
 		try {
+			
+			// Check if already exists
+			if(repo.existsByOriginalUrl(requestDto.getOriginalUrl())) {
+				return new GenericResponseModel<>(HttpStatus.CONFLICT.value(), HttpStatus.CONFLICT, null, "Given URL's Short URL already exists", null);
+			}
+			
 			// Generate a unique short URL code
 			String shortCode = util.generateShortCode();
 			String shortUrl = "http://localhost:8080/" + shortCode;
-
+			
 			// Map from Dto to Entity Object Safely
 			UrlShortenerEntity entity = util.mapToEntity(requestDto, shortUrl);
 
@@ -45,19 +55,37 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
 		} catch (Exception e) {
 			return new GenericResponseModel<>(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-					HttpStatus.INTERNAL_SERVER_ERROR, null, e.getMessage(), "Issue while generating URL");
+					HttpStatus.INTERNAL_SERVER_ERROR, null, e.getMessage(), "No URL passed to generate Short URL");
 		}
 	}
 
 	@Override
-	public GenericResponseModel<List<UrlShortenerModel>> fetchAllShortUrls() {
+	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(UrlShortenerDto paginationRequest) {
+		
+		Integer page = paginationRequest.getPage();
+		Integer size = paginationRequest.getSize();
+		if(page == null || size == null) {
+			page = 1;
+			size = 10;
+		}
 
-		List<UrlShortenerEntity> entityList = repo.findAll();
+		Pageable pageable = PageRequest.of(page-1, size);
 
-		// Map all Entity objects to Model objects
-		List<UrlShortenerModel> model = util.mapToModelList(entityList);
+		Page<UrlShortenerEntity> entityPage = repo.findAll(pageable);
 
-		return new GenericResponseModel<>(HttpStatus.OK.value(), HttpStatus.OK, model, null,
-				"Links Fetched Successfully");
+		List<UrlShortenerModel> modelList = util.mapToModelList(entityPage.getContent());
+
+		GenericResponseModelList<List<UrlShortenerModel>> response = new GenericResponseModelList<>();
+
+		response.setStatusCode(HttpStatus.OK.value());
+		response.setStatus(HttpStatus.OK);
+		response.setData(modelList);
+		response.setMessage("Links Fetched Successfully");
+		// Page Meta Data
+		response.setTotalElements(entityPage.getTotalElements());
+		response.setPage((long) entityPage.getNumber()+1);
+		response.setSize((long) entityPage.getSize());
+
+		return response;
 	}
 }
