@@ -4,13 +4,17 @@ import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.shorturl.dto.UrlShortenerDto;
+import com.shorturl.entity.UrlShortenerEntity;
 import com.shorturl.model.GenericResponseModel;
 import com.shorturl.model.GenericResponseModelList;
 import com.shorturl.model.UrlShortenerModel;
@@ -31,20 +35,13 @@ public class UrlShortenerController {
 	}
 
 	@GetMapping("/fetchAll")
-	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(
-			@RequestBody UrlShortenerDto paginationRequest) {
-		return service.fetchAllShortUrls(paginationRequest);
+	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(@RequestParam Integer page,
+			Integer size) {
+		return service.fetchAllShortUrls(page, size);
 	}
 
-	@GetMapping("/redirect")
+	@PostMapping("/redirect")
 	public void redirectUrl(@RequestBody UrlShortenerDto requestUrl, HttpServletResponse response) throws IOException {
 		service.redirectUrl(requestUrl, response);
 	}
-
-//	@DeleteMapping("/delete")
-//	public GenericResponseModel<UrlShortenerEntity> deleteShortUrl() {
-//
-//		return new GenericResponseModel<>(HttpStatus.NO_CONTENT.value(), HttpStatus.NO_CONTENT, model, null,
-//				"URL Deleted Successfully");
-//	}
 }
