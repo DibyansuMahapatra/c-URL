@@ -20,7 +20,9 @@ public interface UrlShortenerService {
 	 */
 	GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto);
 
-	GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(UrlShortenerDto paginationRequest);
+	GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(Integer page, Integer size);
 
 	void redirectUrl(UrlShortenerDto requestUrl, HttpServletResponse response) throws IOException;
+
+	void autoDelete();
 }

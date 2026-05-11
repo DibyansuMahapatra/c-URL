@@ -74,6 +74,10 @@ public class UrlShortenerUtil {
 		if (entity.getCreatedAt() != null) {
 			model.setCreatedAt(entity.getCreatedAt());
 		}
+		
+		if (entity.getExpiresAt() != null) {
+			model.setExpiryAt(entity.getExpiresAt());
+		}
 
 		if (entity.getClickCount() != null) {
 			model.setClickCount(entity.getClickCount());

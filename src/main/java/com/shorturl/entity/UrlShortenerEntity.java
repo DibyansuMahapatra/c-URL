@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,7 +17,6 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "url_shortener")
-//@JsonPropertyOrder({ "id", "originalUrl", "shortUrl", "clickCount", "createdAt" })
 
 @Getter
 @Setter
@@ -37,11 +37,22 @@ public class UrlShortenerEntity {
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
+	@Column(name = "expires_at", nullable = false, updatable = false)
+	private LocalDateTime expiresAt;
+
 	@Column(name = "click_count", nullable = false)
 	private Long clickCount = 0L;
 
-	// Business logic method
+	// Increment URL Click Count
 	public void incrementClickCount() {
 		this.clickCount++;
+	}
+
+	// Automatically set expiresAt 10 minutes after creation
+	@PrePersist
+	public void prePersist() {
+		if (expiresAt == null) {
+			expiresAt = LocalDateTime.now().plusMinutes(10);
+		}
 	}
 }

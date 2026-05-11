@@ -1,13 +1,16 @@
 package com.shorturl.serviceimpl;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.shorturl.dto.UrlShortenerDto;
@@ -30,6 +33,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 	@Autowired
 	private UrlShortenerUtil util;
 
+	// Method to Create and Return a new shortUrl-originalUrl Mapping
 	@Override
 	public GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto) {
 
@@ -64,12 +68,11 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 		}
 	}
 
+	// Method to return list of all shortUrl-originalUrl mappings
 	@Override
-	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(UrlShortenerDto paginationRequest) {
+	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(Integer page, Integer size) {
 
-		Integer page = paginationRequest.getPage();
-		Integer size = paginationRequest.getSize();
-		if (page == null || size == null) {
+		if (page == null || page < 1 || size == null || size < 1) {
 			page = 1;
 			size = 10;
 		}
@@ -82,18 +85,33 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
 		GenericResponseModelList<List<UrlShortenerModel>> response = new GenericResponseModelList<>();
 
-		response.setStatusCode(HttpStatus.OK.value());
-		response.setStatus(HttpStatus.OK);
-		response.setData(modelList);
-		response.setMessage("Links Fetched Successfully");
-		// Page Meta Data
-		response.setTotalElements(entityPage.getTotalElements());
-		response.setPage((long) entityPage.getNumber() + 1);
-		response.setSize((long) entityPage.getSize());
+		if (modelList.isEmpty()) {
+
+			response.setStatusCode(HttpStatus.NO_CONTENT.value());
+			response.setStatus(HttpStatus.NO_CONTENT);
+			response.setData(modelList);
+			response.setMessage("List has no Content / Contents");
+			// Page Meta Data
+			response.setTotalElements(entityPage.getTotalElements());
+			response.setPage((long) entityPage.getNumber() + 1);
+			response.setSize((long) entityPage.getSize());
+
+		} else {
+			response.setStatusCode(HttpStatus.OK.value());
+			response.setStatus(HttpStatus.OK);
+			response.setData(modelList);
+			response.setMessage("Links Fetched Successfully");
+			// Page Meta Data
+			response.setTotalElements(entityPage.getTotalElements());
+			response.setPage((long) entityPage.getNumber() + 1);
+			response.setSize((long) entityPage.getSize());
+
+		}
 
 		return response;
 	}
 
+	// Method to Redirect from ShortUrl to OriginalUrl
 	@Override
 	public void redirectUrl(UrlShortenerDto requestUrl, HttpServletResponse response) throws IOException {
 
@@ -104,9 +122,18 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 			return;
 		}
 
-		entity.setClickCount(entity.getClickCount() + 1);
+		entity.incrementClickCount();
 		repo.save(entity);
 
 		response.sendRedirect(entity.getOriginalUrl());
+	}
+
+	// Method to Automatically Delete Expired Links
+	@Override
+	@Scheduled(fixedRate = 120000)
+	public void autoDelete() {
+
+		LocalDateTime now = LocalDateTime.now();
+		repo.deleteAll(repo.findByExpiresAtLessThanEqual(now));
 	}
 }

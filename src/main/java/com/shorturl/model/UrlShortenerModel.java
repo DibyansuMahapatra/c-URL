@@ -17,5 +17,6 @@ public class UrlShortenerModel {
 	private String originalUrl;
 	private String shortUrl;
 	private LocalDateTime createdAt;
+	private LocalDateTime expiryAt;
 	private Long clickCount;
 }
