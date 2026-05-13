@@ -27,11 +27,11 @@ public class UrlShortenerEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(name = "original_url", nullable = false)
+	@Column(name = "original_url", nullable = false, unique = true)
 	private String originalUrl;
 
-	@Column(name = "short_url", nullable = false, unique = true)
-	private String shortUrl;
+	@Column(name = "short_code", nullable = false, unique = true, length = 10)
+	private String shortCode;
 
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -43,16 +43,11 @@ public class UrlShortenerEntity {
 	@Column(name = "click_count", nullable = false)
 	private Long clickCount = 0L;
 
-	// Increment URL Click Count
-	public void incrementClickCount() {
-		this.clickCount++;
-	}
-
-	// Automatically set expiresAt 10 minutes after creation
+	// Automatically set expiresAt to 6 hours after creation
 	@PrePersist
 	public void prePersist() {
 		if (expiresAt == null) {
-			expiresAt = LocalDateTime.now().plusMinutes(10);
+			expiresAt = LocalDateTime.now().plusHours(6);
 		}
 	}
 }

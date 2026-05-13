@@ -1,17 +1,19 @@
 package com.shorturl.serviceimpl;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.shorturl.dto.UrlShortenerDto;
 import com.shorturl.entity.UrlShortenerEntity;
@@ -19,6 +21,7 @@ import com.shorturl.model.GenericResponseModel;
 import com.shorturl.model.GenericResponseModelList;
 import com.shorturl.model.UrlShortenerModel;
 import com.shorturl.repository.UrlShortenerRepo;
+import com.shorturl.service.RedisService;
 import com.shorturl.service.UrlShortenerService;
 import com.shorturl.util.UrlShortenerUtil;
 
@@ -33,107 +36,150 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 	@Autowired
 	private UrlShortenerUtil util;
 
-	// Method to Create and Return a new shortUrl-originalUrl Mapping
+	@Autowired
+	private RedisService redisService;
+
+	@Value("${app.base-url}")
+	private String baseUrl;
+
 	@Override
+	@Transactional
 	public GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto) {
 
 		try {
 
-			// Check if already exists
-			if (repo.existsByOriginalUrl(requestDto.getOriginalUrl())) {
-				return new GenericResponseModel<>(HttpStatus.CONFLICT.value(), HttpStatus.CONFLICT, null,
-						"Given URL's Short URL already exists", null);
+			// Check if original URL already exists
+			UrlShortenerEntity existingEntity = repo.findByOriginalUrl(requestDto.getOriginalUrl());
+
+			if (existingEntity != null) {
+
+				UrlShortenerModel existingModel = util.mapToModel(existingEntity, baseUrl);
+
+				return new GenericResponseModel<>(HttpStatus.OK.value(), HttpStatus.OK, existingModel, null,
+						"Short URL already exists for given URL");
 			}
 
-			// Generate a unique short URL code
-			String baseUrl = "http://localhost:8080/";
+			/********** Flow for generating new URL **********/
+
+			// Generate unique short code
 			String shortCode = util.generateShortCode();
-			String shortUrl = baseUrl + shortCode;
 
-			// Map from Dto to Entity Object Safely
-			UrlShortenerEntity entity = util.mapToEntity(requestDto, shortUrl);
+			// Map DTO -> Entity
+			UrlShortenerEntity entity = util.mapToEntity(requestDto, shortCode);
 
-			// Save Entity
+			// Save in DB
 			entity = repo.save(entity);
 
-			// Map from Entity to Model to return Response Safely
-			UrlShortenerModel model = util.mapToModel(entity);
+			// Save in Redis
+			long ttlMinutes = Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes();
+			redisService.saveUrlMapping(entity.getShortCode(), entity.getOriginalUrl(), ttlMinutes);
+
+			// Entity -> Model
+			UrlShortenerModel model = util.mapToModel(entity, baseUrl);
 
 			return new GenericResponseModel<>(HttpStatus.CREATED.value(), HttpStatus.CREATED, model, null,
-					"Short URL Generated Successfully");
+					"Short URL generated successfully");
 
 		} catch (Exception e) {
+
 			return new GenericResponseModel<>(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-					HttpStatus.INTERNAL_SERVER_ERROR, null, e.getMessage(), "No URL passed to generate Short URL");
+					HttpStatus.INTERNAL_SERVER_ERROR, null, e.getMessage(), "Short URL generation failed");
 		}
 	}
 
-	// Method to return list of all shortUrl-originalUrl mappings
 	@Override
 	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(Integer page, Integer size) {
-
-		if (page == null || page < 1 || size == null || size < 1) {
-			page = 1;
-			size = 10;
-		}
 
 		Pageable pageable = PageRequest.of(page - 1, size);
 
 		Page<UrlShortenerEntity> entityPage = repo.findAll(pageable);
 
-		List<UrlShortenerModel> modelList = util.mapToModelList(entityPage.getContent());
+		List<UrlShortenerModel> modelList = util.mapToModelList(entityPage.getContent(), baseUrl);
 
 		GenericResponseModelList<List<UrlShortenerModel>> response = new GenericResponseModelList<>();
 
-		if (modelList.isEmpty()) {
+		response.setStatusCode(HttpStatus.OK.value());
+		response.setStatus(HttpStatus.OK);
+		response.setData(modelList);
+		response.setMessage(modelList.isEmpty() ? "No URLs found" : "URLs fetched successfully");
 
-			response.setStatusCode(HttpStatus.NO_CONTENT.value());
-			response.setStatus(HttpStatus.NO_CONTENT);
-			response.setData(modelList);
-			response.setMessage("List has no Content / Contents");
-			// Page Meta Data
-			response.setTotalElements(entityPage.getTotalElements());
-			response.setPage((long) entityPage.getNumber() + 1);
-			response.setSize((long) entityPage.getSize());
-
-		} else {
-			response.setStatusCode(HttpStatus.OK.value());
-			response.setStatus(HttpStatus.OK);
-			response.setData(modelList);
-			response.setMessage("Links Fetched Successfully");
-			// Page Meta Data
-			response.setTotalElements(entityPage.getTotalElements());
-			response.setPage((long) entityPage.getNumber() + 1);
-			response.setSize((long) entityPage.getSize());
-
-		}
+		response.setTotalElements(entityPage.getTotalElements());
+		response.setPage((long) entityPage.getNumber() + 1);
+		response.setSize((long) entityPage.getSize());
 
 		return response;
 	}
 
-	// Method to Redirect from ShortUrl to OriginalUrl
 	@Override
-	public void redirectUrl(UrlShortenerDto requestUrl, HttpServletResponse response) throws IOException {
+	public void redirectUrl(String shortCode, HttpServletResponse response) throws IOException {
 
-		UrlShortenerEntity entity = repo.findByShortUrl(requestUrl.getShortUrl());
+		if (shortCode == null || shortCode.isBlank()) {
 
-		if (entity == null) {
-			response.sendError(HttpServletResponse.SC_NOT_FOUND);
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid short code");
+
 			return;
 		}
 
-		entity.incrementClickCount();
+		// 1. Check Redis
+		String originalUrl = redisService.getOriginalUrl(shortCode);
+
+		// CACHE HIT
+		if (originalUrl != null) {
+
+			UrlShortenerEntity entity = repo.findByShortCode(shortCode);
+
+			if (entity != null) {
+				repo.incrementClickCount(shortCode);
+				repo.save(entity);
+			}
+
+			response.sendRedirect(originalUrl);
+			return;
+		}
+
+		// CACHE MISS
+		UrlShortenerEntity entity = repo.findByShortCode(shortCode);
+
+		if (entity == null) {
+
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Short URL not found");
+
+			return;
+		}
+
+		// Check Expiry
+		if (entity.getExpiresAt().isBefore(LocalDateTime.now())) {
+
+			response.sendError(HttpServletResponse.SC_GONE, "Short URL expired");
+
+			return;
+		}
+
+		// Save to Redis
+		long ttlMinutes = Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes();
+
+		redisService.saveUrlMapping(entity.getShortCode(), entity.getOriginalUrl(), ttlMinutes);
+
+		// Increment Click Count
+		repo.incrementClickCount(shortCode);
 		repo.save(entity);
 
 		response.sendRedirect(entity.getOriginalUrl());
 	}
 
-	// Method to Automatically Delete Expired Links
 	@Override
-	@Scheduled(fixedRate = 120000)
+	@Scheduled(cron = "0 */30 * * * *")
 	public void autoDelete() {
 
-		LocalDateTime now = LocalDateTime.now();
-		repo.deleteAll(repo.findByExpiresAtLessThanEqual(now));
+		// Get expired links first
+		List<UrlShortenerEntity> expiredLinks = repo.findExpiredLinks(LocalDateTime.now());
+
+		// Delete from Redis
+		for (UrlShortenerEntity object : expiredLinks) {
+			redisService.deleteUrlMapping(object.getShortCode());
+		}
+
+		// Delete from DB
+		repo.deleteAll(expiredLinks);
 	}
 }

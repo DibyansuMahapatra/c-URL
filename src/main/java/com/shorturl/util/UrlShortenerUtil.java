@@ -5,6 +5,7 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.shorturl.dto.UrlShortenerDto;
@@ -18,13 +19,16 @@ public class UrlShortenerUtil {
 	@Autowired
 	private UrlShortenerRepo repo;
 
+	@Value("${app.base-url}")
+	private String baseUrl;
+
 	private static final Random RANDOM = new Random();
 
 	public String generateShortCode() {
 
 		String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-		String code;
+		String shortCode;
 
 		do {
 			StringBuilder sb = new StringBuilder();
@@ -33,14 +37,14 @@ public class UrlShortenerUtil {
 				sb.append(characters.charAt(RANDOM.nextInt(characters.length())));
 			}
 
-			code = sb.toString();
+			shortCode = sb.toString();
 
-		} while (repo.existsByShortUrl("http://localhost:8080/" + code));
+		} while (repo.existsByShortCode(shortCode));
 
-		return code;
+		return shortCode;
 	}
 
-	public UrlShortenerEntity mapToEntity(UrlShortenerDto dto, String shortUrl) {
+	public UrlShortenerEntity mapToEntity(UrlShortenerDto dto, String shortCode) {
 
 		UrlShortenerEntity entity = new UrlShortenerEntity();
 
@@ -48,14 +52,14 @@ public class UrlShortenerUtil {
 			entity.setOriginalUrl(dto.getOriginalUrl());
 		}
 
-		if (shortUrl != null && !shortUrl.isBlank()) {
-			entity.setShortUrl(shortUrl);
+		if (shortCode != null && !shortCode.isBlank()) {
+			entity.setShortCode(shortCode);
 		}
 
 		return entity;
 	}
 
-	public UrlShortenerModel mapToModel(UrlShortenerEntity entity) {
+	public UrlShortenerModel mapToModel(UrlShortenerEntity entity, String baseUrl) {
 
 		UrlShortenerModel model = new UrlShortenerModel();
 
@@ -67,14 +71,16 @@ public class UrlShortenerUtil {
 			model.setOriginalUrl(entity.getOriginalUrl());
 		}
 
-		if (entity.getShortUrl() != null && !entity.getShortUrl().isBlank()) {
-			model.setShortUrl(entity.getShortUrl());
+		if (entity.getShortCode() != null && !entity.getShortCode().isBlank()) {
+			StringBuilder shortUrl = new StringBuilder(baseUrl);
+			shortUrl.append(entity.getShortCode());
+			model.setShortUrl(shortUrl.toString());
 		}
 
 		if (entity.getCreatedAt() != null) {
 			model.setCreatedAt(entity.getCreatedAt());
 		}
-		
+
 		if (entity.getExpiresAt() != null) {
 			model.setExpiryAt(entity.getExpiresAt());
 		}
@@ -86,8 +92,8 @@ public class UrlShortenerUtil {
 		return model;
 	}
 
-	public List<UrlShortenerModel> mapToModelList(List<UrlShortenerEntity> entityList) {
+	public List<UrlShortenerModel> mapToModelList(List<UrlShortenerEntity> entityList, String baseUrl) {
 
-		return entityList.stream().map(this::mapToModel).collect(Collectors.toList());
+		return entityList.stream().map(entity -> mapToModel(entity, baseUrl)).collect(Collectors.toList());
 	}
 }

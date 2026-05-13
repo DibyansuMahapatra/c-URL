@@ -4,9 +4,8 @@ import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,13 +13,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.shorturl.dto.UrlShortenerDto;
-import com.shorturl.entity.UrlShortenerEntity;
 import com.shorturl.model.GenericResponseModel;
 import com.shorturl.model.GenericResponseModelList;
 import com.shorturl.model.UrlShortenerModel;
 import com.shorturl.service.UrlShortenerService;
 
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 
 @RestController
 @RequestMapping("/compactURL")
@@ -30,18 +30,21 @@ public class UrlShortenerController {
 	private UrlShortenerService service;
 
 	@PostMapping("/generate")
-	public GenericResponseModel<UrlShortenerModel> createShortUrl(@RequestBody UrlShortenerDto requestDto) {
+	public GenericResponseModel<UrlShortenerModel> createShortUrl(@Valid @RequestBody UrlShortenerDto requestDto) {
 		return service.createShortUrl(requestDto);
 	}
 
 	@GetMapping("/fetchAll")
-	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(@RequestParam Integer page,
-			Integer size) {
+	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(
+			@RequestParam(defaultValue = "1") @Min(1) Integer page,
+			@RequestParam(defaultValue = "10") @Min(10) Integer size) {
+
 		return service.fetchAllShortUrls(page, size);
 	}
 
-	@PostMapping("/redirect")
-	public void redirectUrl(@RequestBody UrlShortenerDto requestUrl, HttpServletResponse response) throws IOException {
-		service.redirectUrl(requestUrl, response);
+	@GetMapping("/{shortCode}")
+	public void redirectUrl(@PathVariable String shortCode, HttpServletResponse response) throws IOException {
+
+		service.redirectUrl(shortCode, response);
 	}
 }
