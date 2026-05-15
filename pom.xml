@@ -91,6 +91,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>CompactURL</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
