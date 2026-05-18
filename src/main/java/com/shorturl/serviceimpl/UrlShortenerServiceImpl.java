@@ -71,7 +71,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 			entity = repo.save(entity);
 
 			// Save in Redis
-			long ttlMinutes = Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes();
+			long ttlMinutes = Math.max(1, Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes());
 			redisService.saveUrlMapping(entity.getShortCode(), entity.getOriginalUrl(), ttlMinutes);
 
 			// Entity -> Model
@@ -128,10 +128,21 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
 			UrlShortenerEntity entity = repo.findByShortCode(shortCode);
 
-			if (entity != null) {
-				repo.incrementClickCount(shortCode);
-				repo.save(entity);
+			if (entity == null) {
+				response.sendError(HttpServletResponse.SC_NOT_FOUND);
+				return;
 			}
+
+			if (entity.getExpiresAt().isBefore(LocalDateTime.now())) {
+
+				redisService.deleteUrlMapping(shortCode);
+
+				response.sendError(HttpServletResponse.SC_GONE, "Short URL expired");
+
+				return;
+			}
+
+			repo.incrementClickCount(shortCode);
 
 			response.sendRedirect(originalUrl);
 			return;
@@ -156,13 +167,12 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 		}
 
 		// Save to Redis
-		long ttlMinutes = Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes();
+		long ttlMinutes = Math.max(1, Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes());
 
 		redisService.saveUrlMapping(entity.getShortCode(), entity.getOriginalUrl(), ttlMinutes);
 
 		// Increment Click Count
 		repo.incrementClickCount(shortCode);
-		repo.save(entity);
 
 		response.sendRedirect(entity.getOriginalUrl());
 	}
