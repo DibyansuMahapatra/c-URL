@@ -14,7 +14,7 @@ public class CorsConfig {
 			@Override
 			public void addCorsMappings(CorsRegistry registry) {
 				registry.addMapping("/**")
-						.allowedOrigins("http://localhost:5173", "https://c-url.lovable.app.lovable.app")
+						.allowedOrigins("http://localhost:8081", "https://c-url.lovable.app.lovable.app","https://happy-indexed-rate-few.trycloudflare.com")
 						.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS").allowedHeaders("*")
 						.allowCredentials(true);
 			}

@@ -44,6 +44,23 @@ services:
     networks:
       - compact-network
 
+  frontend:
+    build:
+      context: "../C-URL UI/api-connect-show"
+      dockerfile: Dockerfile
+
+    container_name: compacturl-frontend
+
+    ports:
+      - "8081:80"
+
+    depends_on:
+      - app
+
+    networks:
+      - compact-network
+
+
 volumes:
   postgres_data:
 
