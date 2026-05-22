@@ -19,12 +19,12 @@ RUN mvn clean package -DskipTests
 # =========================
 # Stage 2 -> Runtime
 # =========================
-FROM eclipse-temurin:21-jdk
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
 # Copy jar from builder stage
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/target/CompactURL.jar app.jar
 
 EXPOSE 8080
 
