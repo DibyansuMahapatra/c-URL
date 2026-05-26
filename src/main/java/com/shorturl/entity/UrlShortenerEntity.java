@@ -27,7 +27,7 @@ public class UrlShortenerEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(name = "original_url", nullable = false, unique = true)
+	@Column(name = "original_url", nullable = false, unique = true, length = 2048)
 	private String originalUrl;
 
 	@Column(name = "short_code", nullable = false, unique = true, length = 10)

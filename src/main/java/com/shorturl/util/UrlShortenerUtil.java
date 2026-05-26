@@ -24,17 +24,20 @@ public class UrlShortenerUtil {
 
 	private static final Random RANDOM = new Random();
 
-	public String generateShortCode() {
+	private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-		String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	private static final int SHORT_CODE_LENGTH = 10;
+
+	public String generateShortCode() {
 
 		String shortCode;
 
 		do {
+
 			StringBuilder sb = new StringBuilder();
 
-			for (int i = 0; i < 6; i++) {
-				sb.append(characters.charAt(RANDOM.nextInt(characters.length())));
+			for (int i = 0; i < SHORT_CODE_LENGTH; i++) {
+				sb.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
 			}
 
 			shortCode = sb.toString();

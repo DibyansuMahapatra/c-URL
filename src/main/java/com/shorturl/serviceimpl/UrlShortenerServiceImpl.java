@@ -59,10 +59,25 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 						"Short URL already exists for given URL");
 			}
 
-			/********** Flow for generating new URL **********/
+			String shortCode;
 
-			// Generate unique short code
-			String shortCode = util.generateShortCode();
+			/********** Custom Alias Flow **********/
+			if (requestDto.getCustomAlias() != null && !requestDto.getCustomAlias().trim().isEmpty()) {
+
+				shortCode = requestDto.getCustomAlias().trim();
+
+				// Check if alias already exists
+				if (repo.existsByShortCode(shortCode)) {
+
+					return new GenericResponseModel<>(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST, null,
+							null, "Custom alias already taken");
+				}
+
+			} else {
+
+				/********** Auto Generate Flow **********/
+				shortCode = util.generateShortCode();
+			}
 
 			// Map DTO -> Entity
 			UrlShortenerEntity entity = util.mapToEntity(requestDto, shortCode);
@@ -72,11 +87,11 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
 			// Save in Redis
 			long ttlMinutes = Math.max(1, Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes());
+
 			redisService.saveUrlMapping(entity.getShortCode(), entity.getOriginalUrl(), ttlMinutes);
 
 			// Entity -> Model
 			UrlShortenerModel model = util.mapToModel(entity, baseUrl);
-			System.out.println("Short URL : "+model.getShortUrl());
 
 			return new GenericResponseModel<>(HttpStatus.CREATED.value(), HttpStatus.CREATED, model, null,
 					"Short URL generated successfully");
@@ -192,5 +207,10 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
 		// Delete from DB
 		repo.deleteAll(expiredLinks);
+	}
+
+	@Override
+	public boolean isAliasTaken(String alias) {
+		return repo.existsByShortCode(alias);
 	}
 }
