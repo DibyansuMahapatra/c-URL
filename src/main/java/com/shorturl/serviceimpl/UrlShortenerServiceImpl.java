@@ -76,6 +76,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 
 			// Entity -> Model
 			UrlShortenerModel model = util.mapToModel(entity, baseUrl);
+			System.out.println("Short URL : "+model.getShortUrl());
 
 			return new GenericResponseModel<>(HttpStatus.CREATED.value(), HttpStatus.CREATED, model, null,
 					"Short URL generated successfully");
