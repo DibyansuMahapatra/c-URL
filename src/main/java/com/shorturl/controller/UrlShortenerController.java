@@ -47,4 +47,11 @@ public class UrlShortenerController {
 
 		service.redirectUrl(shortCode, response);
 	}
+
+	@GetMapping("/check-alias/{alias}")
+	public GenericResponseModel<Boolean> checkAlias(@PathVariable String alias) {
+		boolean exists = service.isAliasTaken(alias);
+		return new GenericResponseModel<>(200, org.springframework.http.HttpStatus.OK, exists, null,
+				exists ? "Alias already taken" : "Alias available");
+	}
 }

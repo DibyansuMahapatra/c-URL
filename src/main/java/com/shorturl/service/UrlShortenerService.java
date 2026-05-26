@@ -43,4 +43,12 @@ public interface UrlShortenerService {
 	 * @return No return, as it is a scheduled DB cleaner
 	 */
 	void autoDelete();
+	
+	/**
+	 * Checks existing Custom Alias
+	 *
+	 * @param alias - alias value
+	 * @return boolean - true or false
+	 */
+	boolean isAliasTaken(String alias);
 }
