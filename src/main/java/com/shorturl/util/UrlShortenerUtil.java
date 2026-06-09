@@ -1,5 +1,6 @@
 package com.shorturl.util;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -62,7 +63,7 @@ public class UrlShortenerUtil {
 		return entity;
 	}
 
-	public UrlShortenerModel mapToModel(UrlShortenerEntity entity, String baseUrl) {
+	public UrlShortenerModel mapToModel(UrlShortenerEntity entity, String baseUrl, ZoneId userZone) {
 
 		UrlShortenerModel model = new UrlShortenerModel();
 
@@ -81,11 +82,11 @@ public class UrlShortenerUtil {
 		}
 
 		if (entity.getCreatedAt() != null) {
-			model.setCreatedAt(entity.getCreatedAt());
+			model.setCreatedAt(entity.getCreatedAt().atZone(userZone));
 		}
 
 		if (entity.getExpiresAt() != null) {
-			model.setExpiryAt(entity.getExpiresAt());
+			model.setExpiryAt(entity.getExpiresAt().atZone(userZone));
 		}
 
 		if (entity.getClickCount() != null) {
@@ -95,8 +96,9 @@ public class UrlShortenerUtil {
 		return model;
 	}
 
-	public List<UrlShortenerModel> mapToModelList(List<UrlShortenerEntity> entityList, String baseUrl) {
+	public List<UrlShortenerModel> mapToModelList(List<UrlShortenerEntity> entityList, String baseUrl,
+			ZoneId userZone) {
 
-		return entityList.stream().map(entity -> mapToModel(entity, baseUrl)).collect(Collectors.toList());
+		return entityList.stream().map(entity -> mapToModel(entity, baseUrl, userZone)).collect(Collectors.toList());
 	}
 }

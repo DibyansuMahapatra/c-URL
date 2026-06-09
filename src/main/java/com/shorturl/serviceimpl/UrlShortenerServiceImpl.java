@@ -2,7 +2,8 @@ package com.shorturl.serviceimpl;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,18 +43,29 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 	@Value("${app.base-url}")
 	private String baseUrl;
 
-	@Override
-	@Transactional
-	public GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto) {
+	private ZoneId getUserZone(String timezone) {
 
 		try {
+			return ZoneId.of(timezone);
+		} catch (Exception e) {
+			return ZoneId.of("UTC");
+		}
+	}
+
+	@Override
+	@Transactional
+	public GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto, String timezone) {
+
+		try {
+
+			ZoneId userZone = getUserZone(timezone);
 
 			// Check if original URL already exists
 			UrlShortenerEntity existingEntity = repo.findByOriginalUrl(requestDto.getOriginalUrl());
 
 			if (existingEntity != null) {
 
-				UrlShortenerModel existingModel = util.mapToModel(existingEntity, baseUrl);
+				UrlShortenerModel existingModel = util.mapToModel(existingEntity, baseUrl, userZone);
 
 				return new GenericResponseModel<>(HttpStatus.OK.value(), HttpStatus.OK, existingModel, null,
 						"Short URL already exists for given URL");
@@ -86,12 +98,12 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 			entity = repo.save(entity);
 
 			// Save in Redis
-			long ttlMinutes = Math.max(1, Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes());
+			long ttlMinutes = Math.max(1, Duration.between(Instant.now(), entity.getExpiresAt()).toMinutes());
 
 			redisService.saveUrlMapping(entity.getShortCode(), entity.getOriginalUrl(), ttlMinutes);
 
 			// Entity -> Model
-			UrlShortenerModel model = util.mapToModel(entity, baseUrl);
+			UrlShortenerModel model = util.mapToModel(entity, baseUrl, userZone);
 
 			return new GenericResponseModel<>(HttpStatus.CREATED.value(), HttpStatus.CREATED, model, null,
 					"Short URL generated successfully");
@@ -104,13 +116,16 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 	}
 
 	@Override
-	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(Integer page, Integer size) {
+	public GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(Integer page, Integer size,
+			String timezone) {
+
+		ZoneId userZone = getUserZone(timezone);
 
 		Pageable pageable = PageRequest.of(page - 1, size);
 
 		Page<UrlShortenerEntity> entityPage = repo.findAll(pageable);
 
-		List<UrlShortenerModel> modelList = util.mapToModelList(entityPage.getContent(), baseUrl);
+		List<UrlShortenerModel> modelList = util.mapToModelList(entityPage.getContent(), baseUrl, userZone);
 
 		GenericResponseModelList<List<UrlShortenerModel>> response = new GenericResponseModelList<>();
 
@@ -149,7 +164,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 				return;
 			}
 
-			if (entity.getExpiresAt().isBefore(LocalDateTime.now())) {
+			if (entity.getExpiresAt().isBefore(Instant.now())) {
 
 				redisService.deleteUrlMapping(shortCode);
 
@@ -175,7 +190,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 		}
 
 		// Check Expiry
-		if (entity.getExpiresAt().isBefore(LocalDateTime.now())) {
+		if (entity.getExpiresAt().isBefore(Instant.now())) {
 
 			response.sendError(HttpServletResponse.SC_GONE, "Short URL expired");
 
@@ -183,7 +198,7 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 		}
 
 		// Save to Redis
-		long ttlMinutes = Math.max(1, Duration.between(LocalDateTime.now(), entity.getExpiresAt()).toMinutes());
+		long ttlMinutes = Math.max(1, Duration.between(Instant.now(), entity.getExpiresAt()).toMinutes());
 
 		redisService.saveUrlMapping(entity.getShortCode(), entity.getOriginalUrl(), ttlMinutes);
 
@@ -194,11 +209,11 @@ public class UrlShortenerServiceImpl implements UrlShortenerService {
 	}
 
 	@Override
-	@Scheduled(cron = "0 */30 * * * *")
+	@Scheduled(cron = "0 */10 * * * *")
 	public void autoDelete() {
 
 		// Get expired links first
-		List<UrlShortenerEntity> expiredLinks = repo.findExpiredLinks(LocalDateTime.now());
+		List<UrlShortenerEntity> expiredLinks = repo.findExpiredLinks(Instant.now());
 
 		// Delete from Redis
 		for (UrlShortenerEntity object : expiredLinks) {

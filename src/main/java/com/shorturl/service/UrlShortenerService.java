@@ -18,7 +18,7 @@ public interface UrlShortenerService {
 	 * @param requestDto - Dto Object that brings the long/original URL
 	 * @return GenericResponseModel containing the saved UrlShortenerEntity
 	 */
-	GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto);
+	GenericResponseModel<UrlShortenerModel> createShortUrl(UrlShortenerDto requestDto, String timezone);
 	
 	/**
 	 * Returns a list of shortUrl -> originalUrl Objects
@@ -26,7 +26,7 @@ public interface UrlShortenerService {
 	 * @param page, size- Integer variables that set the size of page
 	 * @return A list of GenericResponseModelList type, containing all the saved UrlShortenerEntity
 	 */
-	GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(Integer page, Integer size);
+	GenericResponseModelList<List<UrlShortenerModel>> fetchAllShortUrls(Integer page, Integer size, String timezone);
 
 	/**
 	 * Redirects a short URL to it's corresponding original URL
