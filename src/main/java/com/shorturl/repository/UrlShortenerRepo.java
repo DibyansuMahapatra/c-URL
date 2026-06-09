@@ -1,6 +1,6 @@
 package com.shorturl.repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,7 +25,7 @@ public interface UrlShortenerRepo extends JpaRepository<UrlShortenerEntity, Long
 	UrlShortenerEntity findByOriginalUrl(String originalUrl);
 
 	@Query("SELECT s FROM UrlShortenerEntity s WHERE s.expiresAt <= :now")
-	List<UrlShortenerEntity> findExpiredLinks(@Param("now") LocalDateTime now);
+	List<UrlShortenerEntity> findExpiredLinks(@Param("now") Instant now);
 
 	@Modifying
 	@Transactional

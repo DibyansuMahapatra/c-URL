@@ -1,6 +1,7 @@
 package com.shorturl.entity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -35,19 +36,19 @@ public class UrlShortenerEntity {
 
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
-	private LocalDateTime createdAt;
+	private Instant createdAt;
 
 	@Column(name = "expires_at", nullable = false, updatable = false)
-	private LocalDateTime expiresAt;
+	private Instant expiresAt;
 
 	@Column(name = "click_count", nullable = false)
 	private Long clickCount = 0L;
 
-	// Automatically set expiresAt to 6 hours after creation
+	// Automatically set expiresAt to 5 minutes after creation
 	@PrePersist
 	public void prePersist() {
 		if (expiresAt == null) {
-			expiresAt = LocalDateTime.now().plusHours(6);
+			expiresAt = Instant.now().plus(5, ChronoUnit.MINUTES);
 		}
 	}
 }

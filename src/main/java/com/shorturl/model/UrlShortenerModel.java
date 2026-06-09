@@ -1,6 +1,6 @@
 package com.shorturl.model;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
@@ -16,7 +16,7 @@ public class UrlShortenerModel {
 	private Long id;
 	private String originalUrl;
 	private String shortUrl;
-	private LocalDateTime createdAt;
-	private LocalDateTime expiryAt;
+	private ZonedDateTime createdAt;
+	private ZonedDateTime expiryAt;
 	private Long clickCount;
 }
