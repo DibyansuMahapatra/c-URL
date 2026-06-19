@@ -48,7 +48,7 @@ public class UrlShortenerEntity {
 	@PrePersist
 	public void prePersist() {
 		if (expiresAt == null) {
-			expiresAt = Instant.now().plus(5, ChronoUnit.MINUTES);
+			expiresAt = Instant.now().plus(10, ChronoUnit.MINUTES);
 		}
 	}
 }
