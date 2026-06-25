@@ -44,11 +44,11 @@ public class UrlShortenerEntity {
 	@Column(name = "click_count", nullable = false)
 	private Long clickCount = 0L;
 
-	// Automatically set expiresAt to 5 minutes after creation
+	// Automatically set expiresAt to 2 hours after creation
 	@PrePersist
 	public void prePersist() {
 		if (expiresAt == null) {
-			expiresAt = Instant.now().plus(10, ChronoUnit.MINUTES);
+			expiresAt = Instant.now().plus(2, ChronoUnit.HOURS);
 		}
 	}
 }
